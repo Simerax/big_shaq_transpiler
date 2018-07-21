@@ -153,13 +153,15 @@ sub convert_parsed_to_perl {
 
     # Check if the first parsed element is a script_start statement
     if (ref(shift(@{$self->{'parsed_content'}})) ne 'script_start') {
-        print "Big Shaq is not Ready!\n";
+        $self->report_syntax_error("Big Shaq is not Ready!");
+        exit();
         return undef;
     }
 
     # Check if the last parsed element is a script_end statement
     if (ref(pop(@{$self->{'parsed_content'}})) ne 'script_end') {
-        print "Big Shaq is not done yet!\n";
+        $self->report_syntax_error("Big Shaq is not done yet!");
+        exit();
         return undef;
     }
 
@@ -227,7 +229,6 @@ sub parse {
                 chomp($line);
                 $self->report_warning(
                     "line $line_counter: '$line' looks like it starts with an unknown keyword - it will be ignored"
-                    #"line: '$line'  (line $line_counter) - it will be ignored"
                 );
             }
         }
