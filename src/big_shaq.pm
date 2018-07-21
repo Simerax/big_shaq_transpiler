@@ -250,7 +250,7 @@ sub check_script_start {
     my ($self) = @_;
 
     if (scalar($self->{'parsed_content'}) > 0 ) {
-        if ($self->{'parsed_content'}[0] ne 'SCRIPT_START') {
+        if (ref($self->{'parsed_content'}[0]) ne 'script_start') {
             return undef;
         }
     }
@@ -271,7 +271,7 @@ sub parse_read_stdio {
 
     if ($line =~ /^\s*\Q$self->{'tokens'}{'READ_STDIO'}\E\s+(.+)$/) {
         my $variable = $1;
-        my $call = Read_STDIO->new(
+        my $call = read_stdio->new(
             line            => $line_number,
             variable_name   => $variable,
         );
