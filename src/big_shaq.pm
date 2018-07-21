@@ -103,37 +103,44 @@ sub check_parsed_functions {
 
     my @functions = $self->get_parsed_functions();
 
-    foreach my $element (@{$self->{'parsed_content'}}) {
-        my $type = ref($element);
-        if ($type eq 'function') {
-            my $err = 0;
-            foreach my $func (@functions) {
-                next if ($func->identifier() eq $element->identifier()); # dont check myself
 
-                # Check if a function is defined multiple times
-                if ($func->name() eq $element->name()) {
+    foreach my $func_call (@functions) {
+        my $err = 0;
 
-                    $self->report_syntax_error(
-                        "Function '" . $func->name() . "' defined multiple times!\n".
-                        "Found in line ".$func->line_begin()." and ". $element->line_begin()
-                    );
-                    $err = 1;
-                }
+        # Check if function is ever terminated
+        if ($func_call->line_end() eq '-1') {
+            $self->report_syntax_error(
+                "line ".$func_call->line_begin().": Function '" . $func_call->name() . "' is never terminated!\n"
+            );
+        }
 
-                # Check if a Function is defined inside of a Function
-                if ($element->line_begin() < $func->line_begin &&
-                    $element->line_end() >= $func->line_end()) {
-                    
-                    $self->report_syntax_error(
-                        "Function '". $func->name() . "' (line ".$func->line_begin().") defined inside of another Function '". 
-                        $element->name() ."' (line ".$element->line_begin().")"
-                    );
-                    $err = 1;
-                }
+
+        foreach my $func (@functions) {
+            next if ($func->identifier() eq $func_call->identifier()); # dont check myself
+
+            # Check if a function is defined multiple times
+            if ($func->name() eq $func_call->name()) {
+
+                $self->report_syntax_error(
+                    "Function '" . $func->name() . "' defined multiple times!\n".
+                    "Found in line ".$func->line_begin()." and ". $func_call->line_begin()
+                );
+                $err = 1;
             }
-            if ($err) {
-                exit();
+
+            # Check if a Function is defined inside of a Function
+            if ($func_call->line_begin() < $func->line_begin &&
+                $func_call->line_end() >= $func->line_end()) {
+                
+                $self->report_syntax_error(
+                    "Function '". $func->name() . "' (line ".$func->line_begin().") defined inside of another Function '". 
+                    $func_call->name() ."' (line ".$func_call->line_begin().")"
+                );
+                $err = 1;
             }
+        }
+        if ($err) {
+            exit();
         }
     }
 }
