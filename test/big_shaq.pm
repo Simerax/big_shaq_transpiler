@@ -26,7 +26,7 @@ sub test {
         my $valid_call = "I tell her mans not hot";
         my $line_number = 2;
 
-        my $expected_data = Call->new(
+        my $expected_data = call->new(
                 line            => $line_number,
                 function_name   => 'print',
                 parameter       => '\'mans not hot\'."\n"',
@@ -42,7 +42,7 @@ sub test {
     {
         my $valid_call = "when the ting went pap-pap";
         my $line_number = 2;
-        my $expected_data = Call->new(
+        my $expected_data = call->new(
                 line            => $line_number,
                 function_name   => 'pap-pap',
                 parameter       => '',
@@ -57,10 +57,11 @@ sub test {
         my $valid_call = "the ting goes pap-pap";
         my $line_number = 2;
         my $end_func = 5;
-        my $expected_data = Function->new(
+        my $expected_data = function->new(
             name => 'pap-pap',
             line_begin => $line_number,
             line_end   => $end_func, 
+            identifier => 1,
         );
 
         my $obj = big_shaq::new();

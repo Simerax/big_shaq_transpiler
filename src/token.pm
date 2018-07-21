@@ -8,32 +8,36 @@ use strict;
 use Class::Struct;
 
 struct(
-    Function => {
-        line_begin  => '$',
-        line_end    => '$',
-        name        => '$',
+    function => {
+        line_begin  => '$', # Line number on which the Function Definition starts
+        line_end    => '$', # Line number on which the Function definition ends
+        name        => '$', # Name of the Function
+        identifier  => '$', # Identifier of the Function, a unique id
     }
 );
 
 struct(
-    Call => {
-        line            => '$',
-        function_name   => '$',
-        parameter       => '$',
+    call => {
+        line            => '$', # Line number on which the Function is called
+        function_name   => '$', # Name of the called Function
+        parameter       => '$', # possibly passed parameters to the called function
     }
 );
 
 struct(
-    Read_STDIO => {
+    read_stdio => {
         line            => '$',
         variable_name   => '$'
     }
 );
 
+# Structure to mark a 'SCRIPT_START' token
 struct(
     script_start => {
     }
 );
+
+# Structure to mark a 'SCRITP_END' token
 struct(
     script_end => {
     }

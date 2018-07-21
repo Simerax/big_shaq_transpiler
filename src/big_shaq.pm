@@ -4,6 +4,8 @@ package big_shaq;
 use warnings;
 use strict;
 
+use Term::ANSIColor;
+
 
 use lib('.');
 use token;
@@ -21,6 +23,7 @@ sub new {
         tokens          => {},
         function_names  => [],
         variable_names  => [],
+        identifier      => 0,
     };
 
     $self->{'tokens'} = token::get_tokens();
@@ -46,6 +49,7 @@ sub run {
 
     push (@{$self->{'content'}}, $_) while(<$fh>);
     $self->parse();
+    $self->check_parsed();
     my $content = $self->convert_parsed_to_perl();
     
     if (defined $content) {
@@ -53,6 +57,93 @@ sub run {
         $executer->execute($content);
     }
 }
+
+sub check_parsed {
+    my ($self) = @_;
+    $self->check_parsed_functions();
+}
+
+sub check_parsed_functions {
+    my ($self) = @_;
+
+    my @functions = $self->get_parsed_functions();
+
+    foreach my $element (@{$self->{'parsed_content'}}) {
+        my $type = ref($element);
+        if ($type eq 'function') {
+            my $err = 0;
+            foreach my $func (@functions) {
+                next if ($func->identifier() eq $element->identifier()); # dont check myself
+
+                # Check if a function is defined multiple times
+                if ($func->name() eq $element->name()) {
+
+                    $self->report_syntax_error(
+                        "Function '" . $func->name() . "' defined multiple times!\n".
+                        "Found in line ".$func->line_begin()." and ". $element->line_begin()
+                    );
+                    $err = 1;
+                }
+
+                # Check if a Function is defined inside of a Function
+                if ($element->line_begin() < $func->line_begin &&
+                    $element->line_end() >= $func->line_end()) {
+                    
+                    $self->report_syntax_error(
+                        "Function '". $func->name() . "' (line ".$func->line_begin().") defined inside of another Function '". 
+                        $element->name() ."' (line ".$element->line_begin().")"
+                    );
+                    $err = 1;
+                }
+            }
+            if ($err) {
+                exit();
+            }
+        }
+    }
+}
+
+
+sub report_syntax_error {
+    my ($self, $msg) = @_;
+
+    print color('red on_black');
+    $self->print_msg($msg);
+}
+
+sub report_warning {
+    my ($self, $msg) = @_;
+
+    print color('yellow on_black');
+    $self->print_msg($msg);
+}
+
+sub print_msg {
+    my ($self, $msg) = @_;
+    print $msg. "\n";
+    print color('reset');
+    print "\n";
+}
+
+sub get_identifier {
+    my ($self) = @_;
+    $self->{'identifier'} += 1;
+    return $self->{'identifier'};
+}
+
+sub get_parsed_functions {
+    my ($self) = @_;
+
+    my @funcs;
+
+    foreach my $e (@{$self->{'parsed_content'}}) {
+        if (ref($e) eq 'function') {
+            push @funcs, $e;
+        }
+    }
+    return @funcs;
+}
+
 
 sub convert_parsed_to_perl {
     my($self) = @_;
@@ -76,12 +167,12 @@ sub convert_parsed_to_perl {
     foreach my $item (@{$self->{'parsed_content'}}) {
         my $type = ref($item);
 
-        if ($type eq 'Function') {
+        if ($type eq 'function') {
             my $perl_func_name = $self->convert_func_name_to_valid_perl($item->name());
             $perl_content[$item->line_begin()] = 'sub '. $perl_func_name .' {';
             $perl_content[$item->line_end()] = '}'; 
         }
-        if ($type eq 'Call') {
+        if ($type eq 'call') {
             $perl_content[$item->line()] = $self->convert_func_name_to_valid_perl($item->function_name()) . "(". $item->parameter().");\n";
         }
     }
@@ -114,21 +205,31 @@ sub parse {
         if ($token eq 'SCRIPT_START') {
             $self->add_script_start();
         }
-        if ($token eq 'SCRIPT_END') {
+        elsif ($token eq 'SCRIPT_END') {
             $self->add_script_end();
         }
-        if ($token eq 'FUNC_DEF_START') {
+        elsif ($token eq 'FUNC_DEF_START') {
             $self->add_func($line, $line_counter);
         }
-        if ($token eq 'FUNC_CALL') {
+        elsif ($token eq 'FUNC_DEF_END') {
+
+        }
+        elsif ($token eq 'FUNC_CALL') {
             $self->add_func_call($line, $line_counter);
         }
-        if ($token eq 'PRINT') {
+        elsif ($token eq 'PRINT') {
             $self->add_print($line, $line_counter);
         }
-
-        if ($token eq 'READ_STDIO') {
+        elsif ($token eq 'READ_STDIO') {
             $self->add_read_stdio($line, $line_counter);
+        } else {
+            if ($line =~ /[^\s]/) {
+                chomp($line);
+                $self->report_warning(
+                    "line $line_counter: '$line' looks like it starts with an unknown keyword - it will be ignored"
+                    #"line: '$line'  (line $line_counter) - it will be ignored"
+                );
+            }
         }
         $line_counter++;
     }
@@ -215,7 +316,7 @@ sub parse_print {
 
     if ($line =~ /^\s*\Q$self->{'tokens'}{'PRINT'}\E\s+(.+)$/) {
         my $parameter = "'" . $1 . "'" . '."\n"';
-        my $call = Call->new(
+        my $call = call->new(
             line            => $line_number,
             function_name   => 'print',
             parameter       => $parameter,
@@ -229,7 +330,7 @@ sub parse_func_call {
 
     if ($line =~ /^\s*\Q$self->{'tokens'}{'FUNC_CALL'}\E\s+([A-Za-z\-]+)$/) {
         my $func_name = $1;
-        my $call = Call->new(
+        my $call = call->new(
             line => $line_number,
             function_name => $func_name,
             parameter => '', # Will maybe be added in the future
@@ -250,10 +351,11 @@ sub parse_func_def_start {
             $line_end = -1;
         }
 
-        my $f = Function->new(
+        my $f = function->new(
             name        => $func_name,
             line_begin  => $line_number,
             line_end    => $line_end,
+            identifier  => $self->get_identifier(),
         );
         return $f;
     }
