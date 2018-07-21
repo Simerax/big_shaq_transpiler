@@ -172,6 +172,27 @@ sub test {
         Test::More::is_deeply($got, $expected, "big_shaq::add_print - Parsing a 'Read STDIO' Statement");  
     }
 
+    {
+        my $test_name = "big_shaq::get_parsed_by_type - Getting Parsed data by type";
+        my $obj = big_shaq::new();
+        my $expected_call = call->new(
+            line => 1,
+            function_name => 'abc',
+            parameter => ''
+        );
+        my $filler = script_start->new(); # create some data which should be filtered
+        $obj->append_parsed_content($filler);
+        $obj->append_parsed_content($expected_call);
+        $obj->append_parsed_content($filler);
+
+        my @got = $obj->get_parsed_by_type('call');
+        if (scalar @got == 1 && ref($got[0]) eq 'call') {
+            Test::More::is_deeply($got[0], $expected_call, $test_name);
+        } else {
+            fail($test_name);
+        }
+
+    }
 
     # end testing in case this is run in standalone
     if ($test_is_run_alone) {

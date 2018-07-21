@@ -76,6 +76,14 @@ my $function_tokens =  [
                             'skrrrah'
 ];
 
+my $predefined_functions = [
+    'print'
+];
+
+sub get_predefined_function_names {
+    return $predefined_functions;
+}
+
 sub get_tokens {
     return $tokens;
 }

@@ -61,6 +61,41 @@ sub run {
 sub check_parsed {
     my ($self) = @_;
     $self->check_parsed_functions();
+    $self->check_parsed_function_calls();
+}
+
+sub check_parsed_function_calls {
+    my ($self) = @_;
+    my @function_calls = $self->get_parsed_function_calls();
+    my @functions = $self->get_parsed_functions();
+
+    my $predefined_functions = token::get_predefined_function_names();
+
+
+    CALLS: foreach my $call (@function_calls) {
+        my $function_does_not_exist = 1;
+
+        # Predefined Functions should not be tested, since they only exist in the perl scope and not in .shaq
+        # for example print()
+        foreach(@{$predefined_functions}) {
+            if ($_ eq $call->function_name()) {
+                next CALLS;
+            }
+        }
+
+        foreach my $function (@functions) {
+            if ($call->function_name() eq $function->name()) {
+                $function_does_not_exist = 0;
+            }
+        }
+
+        if ($function_does_not_exist) {
+            $self->report_syntax_error(
+                "line ".$call->line().": Function '".$call->function_name()."' does not exist!"
+            );
+            exit();
+        }
+    }
 }
 
 sub check_parsed_functions {
@@ -134,14 +169,23 @@ sub get_identifier {
 sub get_parsed_functions {
     my ($self) = @_;
 
-    my @funcs;
+    return $self->get_parsed_by_type('function');
+}
 
+sub get_parsed_function_calls {
+    my ($self) = @_;
+    return $self->get_parsed_by_type('call');
+}
+
+sub get_parsed_by_type {
+    my ($self, $type) = @_;
+    my @found;
     foreach my $e (@{$self->{'parsed_content'}}) {
-        if (ref($e) eq 'function') {
-            push @funcs, $e;
+        if (ref($e) eq $type) {
+            push @found, $e;
         }
     }
-    return @funcs;
+    return @found;
 }
 
 
