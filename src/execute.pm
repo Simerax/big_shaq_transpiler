@@ -20,7 +20,7 @@ sub execute {
     }
 
     while(-f $filename) {
-        $filename = $self-generate_random_filename($filename);
+        $filename = $self->generate_random_filename($filename);
     }
 
     if ($self->write_temp_file($filename, $content)) {
